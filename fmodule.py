@@ -1,6 +1,7 @@
 # documentation link: https://docs.couchbase.com/server/current/install/getting-started-docker.html
 import os
 import subprocess
+import json
 
 # TODO: make a persistent volume -> Pending
 # TODO: load sample buckets from a sample db user
@@ -25,7 +26,7 @@ def check_docker_version() -> None:
 def list_containers() -> None:
     """
     A function that lists all containers by executing 'docker ps -a' command.
-    
+
     This function does not take any parameters and does not return anything.
     """
 
@@ -35,13 +36,13 @@ def list_containers() -> None:
 
 def stop_containers() -> None:
     """
-    Stops the containers named cbn1, cbn2, and cbn3. 
-    Uses `docker container stop` to stop the containers. 
+    Stops the containers named cbn1, cbn2, and cbn3.
+    Uses `docker container stop` to stop the containers.
     """
 
     print("\n")
-    print("\n****************************** Stopping all couchbase containers deployed by the script[cbn1, cbn2, cbn3] ******************************")
-    stop_cmd = f"docker container stop cbn1 cbn2 cbn3"
+    print("\n****************************** Stopping all couchbase containers deployed by the script[cbn1, cbn2, cbn3, sgw] ******************************\n")
+    stop_cmd = f"docker container stop cbn1 cbn2 cbn3 sgw"
     os.system(stop_cmd)
 
 def remove_exited_containers() -> None:
@@ -52,7 +53,7 @@ def remove_exited_containers() -> None:
     """
 
     print(f"****************************** Removing all the exited containers ******************************\n")
-    remove_cmd = f"docker container rm -f cbn1 cbn2 cbn3"
+    remove_cmd = f"docker container rm -f cbn1 cbn2 cbn3 sgw"
     os.system(remove_cmd)
     print("\n")
 
@@ -72,7 +73,9 @@ def pull_docker_image(version: str) -> None:
 
     print("****************************** Pulling the couchbase image ******************************\n")
     image_pull = f"docker pull couchbase:enterprise-{version}"
-    os.system(image_pull)
+    result = subprocess.run(image_pull, shell=True, capture_output=True, text=True)
+    output = result.stdout.strip()
+    print(output)
 
 
 def list_docker_images(version: str) -> None:
@@ -88,7 +91,9 @@ def list_docker_images(version: str) -> None:
 
     print("****************************** Listing all images of couchbase ******************************")
     list_images = f"docker images couchbase:enterprise-{version}"
-    os.system(list_images)
+    result = subprocess.run(list_images, shell=True, capture_output=True, text=True)
+    output = result.stdout.strip()
+    print(output)
 
 
 def run_containers(version: str) -> None:
@@ -119,21 +124,21 @@ def run_containers(version: str) -> None:
     # docker run -d --name cbn3 -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase
     run_cmd_init = f"docker run -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
     container_cbn1 = subprocess.run(run_cmd_init, shell=True, capture_output=True, text=True)
-    print(f"Container cbn1: {container_cbn1.stdout.strip()}")
-    
+    print(f"\nContainer cbn1: {container_cbn1.stdout.strip()[0:7]}")
+
     second_container = f"cbn2"
     run_cmd_second = f"docker run -d --name {second_container} couchbase:{version}"
     container_cbn2 = subprocess.run(run_cmd_second, shell=True, capture_output=True, text=True)
-    print(f"Container cbn2: {container_cbn2.stdout.strip()}")
+    print(f"Container cbn2: {container_cbn2.stdout.strip()[0:7]}")
 
     third_container = f"cbn3"
     run_cmd_third = f"docker run -d --name {third_container}  couchbase:{version}"
     container_cbn3 = subprocess.run(run_cmd_third, shell=True, capture_output=True, text=True)
-    print(f"Container cbn3: {container_cbn3.stdout.strip()}")
+    print(f"Container cbn3: {container_cbn3.stdout.strip()[0:7]}")
     print("\n")
 
 
-def display_container_ip() -> None:
+def display_container_ip(container_name: str) -> None:
     """
     Display the IP addresses of the containers cbn1, cbn2, and cbn3.
 
@@ -148,24 +153,31 @@ def display_container_ip() -> None:
     """
 
     print("\n")
-    print("****************************** Displaying container ip addresses ****************************** ")
+    print("****************************** Displaying container ip addresses ****************************** \n")
     # docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn1
-    
+
     first_container_ip  = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn1"
     second_container_ip = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn2"
     third_container_ip  = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn3"
-    
+
     cbn1_ip = subprocess.run(first_container_ip, shell=True, capture_output=True, text=True)
     cbn2_ip = subprocess.run(second_container_ip, shell=True, capture_output=True, text=True)
     cbn3_ip = subprocess.run(third_container_ip, shell=True, capture_output=True, text=True)
-    
+
     strip_cbn1_ip = cbn1_ip.stdout.strip()
     strip_cbn2_ip = cbn2_ip.stdout.strip()
     strip_cbn3_ip = cbn3_ip.stdout.strip()
-    
-    print(f"cbn1 ip: {strip_cbn1_ip}")
-    print(f"cbn2 ip: {strip_cbn2_ip}")
-    print(f"cbn3 ip: {strip_cbn3_ip}")
+
+    if container_name == "cbn1":
+        return strip_cbn1_ip
+    elif container_name == "cbn2":
+        return strip_cbn2_ip
+    elif container_name == "cbn3":
+        return strip_cbn3_ip
+    else: 
+        print(f"cbn1 ip: {strip_cbn1_ip}")
+        print(f"cbn2 ip: {strip_cbn2_ip}")
+        print(f"cbn3 ip: {strip_cbn3_ip}")
 
 
 def configure_init_node() -> None:
@@ -175,7 +187,7 @@ def configure_init_node() -> None:
     username, and password. It also prints the username and password used for the cluster setup.
     """
 
-    print("****************************** Configuring the nodes ******************************")
+    print("\n****************************** Configuring the nodes ******************************\n")
     # TODO: remove the code smell later
 
     command0 = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn1"
@@ -201,6 +213,7 @@ def configure_init_node() -> None:
     os.system(run_cmd)
     print(f"The username is: {username}")
     print(f"The password is: {password}")
+    print(f"Access the couchbase cluster by: http://localhost:8091")
     print("\n")
 
 def nodes_init() -> None:
@@ -218,16 +231,16 @@ def nodes_init() -> None:
     Returns:
         None
     """
-    print("****************************** Adding nodes to the cluster ******************************")
-    
-    first_container_ip  = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn1"
-    second_container_ip = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn2"
-    third_container_ip  = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn3"
+    print("****************************** Adding nodes to the cluster ******************************\n")
 
-    cbn1_ip = subprocess.run(first_container_ip, shell=True, capture_output=True, text=True)
-    cbn2_ip = subprocess.run(second_container_ip, shell=True, capture_output=True, text=True)
-    cbn3_ip = subprocess.run(third_container_ip, shell=True, capture_output=True, text=True)
-    
+    first_container_ip_cmd  = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn1"
+    second_container_ip_cmd = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn2"
+    third_container_ip_cmd  = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn3"
+
+    cbn1_ip = subprocess.run(first_container_ip_cmd, shell=True, capture_output=True, text=True)
+    cbn2_ip = subprocess.run(second_container_ip_cmd, shell=True, capture_output=True, text=True)
+    cbn3_ip = subprocess.run(third_container_ip_cmd, shell=True, capture_output=True, text=True)
+
     strip_cbn1_ip = cbn1_ip.stdout.strip()
     strip_cbn2_ip = cbn2_ip.stdout.strip()
     strip_cbn3_ip = cbn3_ip.stdout.strip()
@@ -236,14 +249,14 @@ def nodes_init() -> None:
     couchbase-cli server-add -c {strip_cbn1_ip} --username {username} \
     --password {password} --server-add {strip_cbn2_ip} \
     --server-add-username {username} --server-add-password {password} \
-    --services data,index,query,analytics,eventing 
+    --services data,index,query,analytics,eventing
     """
 
     server_init2 = f"""
     couchbase-cli server-add -c {strip_cbn1_ip} --username {username} \
     --password {password} --server-add {strip_cbn3_ip} \
     --server-add-username {username} --server-add-password {password} \
-    --services data,index,query,analytics,eventing 
+    --services data,index,query,analytics,eventing
     """
 
     sleep  = "sleep 5"
@@ -256,7 +269,7 @@ def nodes_init() -> None:
     sleep  = "sleep 15"
     os.system(sleep)
     os.system(exec_cmd_cbn3)
-    
+
 
 def perform_rebalance() -> None:
     """
@@ -272,7 +285,7 @@ def perform_rebalance() -> None:
     """
 
     print("\n")
-    print("****************************** Performing to rebalance the cluster ******************************")
+    print("****************************** Performing to rebalance the cluster ******************************\n")
     cb_cli_rebalance = f"/opt/couchbase/bin/couchbase-cli rebalance -c localhost -u {username} -p {password} --no-progress-bar --no-wait"
     rebalance_cbcli = f"docker exec cbn1 /bin/bash -c '{cb_cli_rebalance}'"
     os.system(rebalance_cbcli)
@@ -294,7 +307,7 @@ def pause_containers() -> None:
         None
     """
     print("****************************** Pausing all couchbase containers deployed by the script[cbn1, cbn2, cbn3] ******************************")
-    pause_cmd = f"docker pause cbn1 cbn2 cbn3"
+    pause_cmd = f"docker pause cbn1 cbn2 cbn3 sgw"
     os.system(pause_cmd)
 
 # have this here to invoke this using the python repl after importing the module
@@ -313,7 +326,7 @@ def unpause_containers() -> None:
         None
     """
     print("****************************** Unpausing all couchbase containers deployed by the script[cbn1, cbn2, cbn3] ******************************")
-    unpause_cmd = f"docker unpause cbn1 cbn2 cbn3"
+    unpause_cmd = f"docker unpause cbn1 cbn2 cbn3 sgw"
     os.system(unpause_cmd)
 
 def start_containers() -> None:
@@ -349,6 +362,62 @@ def sgw_pull_image() -> None:
     image_pull = f"docker pull couchbase/syncgateway"
     os.system(image_pull)
 
+def create_cb_user_for_sgw() -> None:
+    """
+    Creates a Couchbase user for the sync gateway.
+
+    This function prints a message indicating that the Couchbase user is being created.
+    It constructs the command to create the user using the `couchbase-cli` tool.
+    The command is executed using the `os.system` function.
+
+    This function does not take any parameters and does not return anything.
+    """
+
+    print("****************************** Creating the couchbase user for the sync gateway ******************************\n")
+    user_cmd = f"/opt/couchbase/bin/couchbase-cli user-manage -c localhost -u {username} -p {password} --set --rbac-username sync_gateway --rbac-password {password} --rbac-name sync_gateway --roles mobile_sync_gateway[*] --auth-domain local"
+    docker_cmd = f"docker exec cbn1 /bin/bash -c '{user_cmd}'"
+    output = subprocess.run(docker_cmd, shell=True, capture_output=True, text=True)
+    print(output.stdout.strip())
+    print("\n")
 
 def configure_sgw() -> None:
-    ...
+    # docker run -p 4984-4986:4984-4986 --name sgw -d -v ./path/to/config.json:/etc/sync_gateway/config.json couchbase/sync-gateway
+    # use inject cbn1 ip into the config.json file in place of bootstrap part of "server": "couchbase://172.17.0.2"
+
+    print("****************************** Configuring the sync gateway ******************************\n\n")
+    # using the cbn1 ip to configure the sync gateway
+    """ Bootstrap code: {"bootstrap": {"server": "couchbase://172.17.0.2", "username": "sync_gateway", "password": "admin123", "server_tls_skip_verify": true, "use_tls_server": false}, "logging": {"console": {"enabled": true, "log_level": "info", "log_keys": ["*"]}}}"""
+    config_data = {
+        "bootstrap": {
+            "server": f"couchbase://{display_container_ip('cbn1')}",
+            "username": "sync_gateway",
+            "password": password,
+            "server_tls_skip_verify": True,
+            "use_tls_server": False
+        },
+        "logging": {
+            "console": {
+                "enabled": True,
+                "log_level": "info",
+                "log_keys": ["*"]
+            }
+        }
+    }
+    
+    with open('./config.json', 'w') as f:
+        json.dump(config_data, f)
+    print("Made the config file to use the cbn1 ip\n")
+    config_file = "./config.json"
+    print("Configured the sync gateway and modified the config file to use the cbn1 ip\n")
+    run_cmd = f"docker run -p 4984-4986:4984-4986 --name sgw -d -v {config_file}:/etc/sync_gateway/config.json couchbase/sync-gateway"
+    output = subprocess.run(run_cmd, shell=True, capture_output=True, text=True)   
+    
+    print(f"Sync gateway container id: {output.stdout.strip()[0:7]}")
+    print("sync gatway conatiner name: sgw")
+    print("\n")
+    
+    view_sgw_img = f"docker container ls -a | grep sgw"
+    view_output = subprocess.run(view_sgw_img, shell=True, capture_output=True, text=True)
+    print(view_output.stdout.strip())
+    print("sync gateway username: sync_gateway")
+    print(f"sync gateway password: {password}")      

@@ -22,8 +22,8 @@ def main():
     """
 
     # Prompt the user for a version of Couchbase to pull
-    version: str = input("Enter the version of couchbase you want to pull: ")
-
+    version: str = input("\nEnter the version of couchbase you want to pull: ")
+    print("\n")
     # Check Docker version
     check_docker_version()
 
@@ -46,7 +46,7 @@ def main():
     run_containers(version)
 
     # Display IP address of Docker containers
-    display_container_ip()
+    display_container_ip("default")
 
     # Configure the Couchbase init node
     configure_init_node()
@@ -59,6 +59,12 @@ def main():
 
     # Pull Docker image for SGW (Search Gateway)
     sgw_pull_image()
+    
+    # user creation
+    create_cb_user_for_sgw()
+
+    # Configure SGW
+    configure_sgw()
 
 
 if __name__ == "__main__":

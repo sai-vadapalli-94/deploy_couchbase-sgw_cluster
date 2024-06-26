@@ -2,6 +2,7 @@
 import os
 import subprocess
 import json
+import time
 
 # TODO: make a persistent volume -> Pending
 # TODO: load sample buckets from a sample db user
@@ -122,17 +123,17 @@ def run_containers(version: str) -> None:
     print("****************************** Running the couchbase containers ******************************")
     init_container = f"cbn1"
     # docker run -d --name cbn3 -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase
-    run_cmd_init = f"docker run -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
+    run_cmd_init = f"docker run --memory='4g' -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
     container_cbn1 = subprocess.run(run_cmd_init, shell=True, capture_output=True, text=True)
     print(f"\nContainer cbn1: {container_cbn1.stdout.strip()[0:7]}")
 
     second_container = f"cbn2"
-    run_cmd_second = f"docker run -d --name {second_container} couchbase:{version}"
+    run_cmd_second = f"docker run --memory='4g' -d --name {second_container} couchbase:{version}"
     container_cbn2 = subprocess.run(run_cmd_second, shell=True, capture_output=True, text=True)
     print(f"Container cbn2: {container_cbn2.stdout.strip()[0:7]}")
 
     third_container = f"cbn3"
-    run_cmd_third = f"docker run -d --name {third_container}  couchbase:{version}"
+    run_cmd_third = f"docker run --memory='4g' -d --name {third_container}  couchbase:{version}"
     container_cbn3 = subprocess.run(run_cmd_third, shell=True, capture_output=True, text=True)
     print(f"Container cbn3: {container_cbn3.stdout.strip()[0:7]}")
     print("\n")
@@ -193,8 +194,6 @@ def configure_init_node() -> None:
     command0 = "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cbn1"
     result = subprocess.run(command0, shell=True, capture_output=True, text=True)
     container_ip_addr = result.stdout.strip()
-
-    os.system("sleep 10")
 
     data_ramsize = "2048"
     index_ramsize = "512"
@@ -259,15 +258,13 @@ def nodes_init() -> None:
     --services data,index,query,analytics,eventing
     """
 
-    sleep  = "sleep 5"
-    os.system(sleep)
+    time.sleep(5)
 
     exec_cmd_cbn2 = f'docker exec cbn2 /bin/bash -c "{server_init1}"'
     exec_cmd_cbn3 = f'docker exec cbn3 /bin/bash -c "{server_init2}"'
 
     os.system(exec_cmd_cbn2)
-    sleep  = "sleep 15"
-    os.system(sleep)
+    time.sleep(10)
     os.system(exec_cmd_cbn3)
 
 
@@ -289,7 +286,7 @@ def perform_rebalance() -> None:
     cb_cli_rebalance = f"/opt/couchbase/bin/couchbase-cli rebalance -c localhost -u {username} -p {password} --no-progress-bar --no-wait"
     rebalance_cbcli = f"docker exec cbn1 /bin/bash -c '{cb_cli_rebalance}'"
     os.system(rebalance_cbcli)
-    os.system("sleep 15")
+    time.sleep(15)
     print("\n")
 
 def pause_containers() -> None:
@@ -327,7 +324,8 @@ def unpause_containers() -> None:
     """
     print("****************************** Unpausing all couchbase containers deployed by the script[cbn1, cbn2, cbn3] ******************************")
     unpause_cmd = f"docker unpause cbn1 cbn2 cbn3 sgw"
-    os.system(unpause_cmd)
+    cmd_out = subprocess.run(unpause_cmd, shell=True, capture_output=True, text=True)
+    print(cmd_out.stdout.strip())
 
 def start_containers() -> None:
     """
@@ -377,7 +375,7 @@ def create_cb_user_for_sgw() -> None:
     user_cmd = f"/opt/couchbase/bin/couchbase-cli user-manage -c localhost -u {username} -p {password} --set --rbac-username sync_gateway --rbac-password {password} --rbac-name sync_gateway --roles mobile_sync_gateway[*] --auth-domain local"
     docker_cmd = f"docker exec cbn1 /bin/bash -c '{user_cmd}'"
     output = subprocess.run(docker_cmd, shell=True, capture_output=True, text=True)
-    print(output.stdout.strip())
+    print(f"Output of the couchbase-cli command: {output.stdout.strip()}")
     print("\n")
 
 def configure_sgw() -> None:
@@ -413,8 +411,7 @@ def configure_sgw() -> None:
     output = subprocess.run(run_cmd, shell=True, capture_output=True, text=True)   
     
     print(f"Sync gateway container id: {output.stdout.strip()[0:7]}")
-    print("sync gatway conatiner name: sgw")
-    print("\n")
+    print("sync gatway conatiner name: sgw\n")
     
     view_sgw_img = f"docker container ls -a | grep sgw"
     view_output = subprocess.run(view_sgw_img, shell=True, capture_output=True, text=True)

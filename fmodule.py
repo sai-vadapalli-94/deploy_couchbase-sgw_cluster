@@ -2,7 +2,6 @@
 import os
 import subprocess
 import json
-import time
 
 # TODO: make a persistent volume -> Pending
 # TODO: load sample buckets from a sample db user
@@ -123,19 +122,20 @@ def run_containers(version: str) -> None:
     print("****************************** Running the couchbase containers ******************************")
     init_container = f"cbn1"
     # docker run -d --name cbn3 -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase
-    run_cmd_init = f"docker run --memory='4g' -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
+    run_cmd_init = f"docker run -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
     container_cbn1 = subprocess.run(run_cmd_init, shell=True, capture_output=True, text=True)
     print(f"\nContainer cbn1: {container_cbn1.stdout.strip()[0:7]}")
 
     second_container = f"cbn2"
-    run_cmd_second = f"docker run --memory='4g' -d --name {second_container} couchbase:{version}"
+    run_cmd_second = f"docker run -d --name {second_container} couchbase:{version}"
     container_cbn2 = subprocess.run(run_cmd_second, shell=True, capture_output=True, text=True)
     print(f"Container cbn2: {container_cbn2.stdout.strip()[0:7]}")
 
     third_container = f"cbn3"
-    run_cmd_third = f"docker run --memory='4g' -d --name {third_container}  couchbase:{version}"
+    run_cmd_third = f"docker run -d --name {third_container}  couchbase:{version}"
     container_cbn3 = subprocess.run(run_cmd_third, shell=True, capture_output=True, text=True)
     print(f"Container cbn3: {container_cbn3.stdout.strip()[0:7]}")
+    os.system('sleep 10')
     print("\n")
 
 
@@ -258,13 +258,13 @@ def nodes_init() -> None:
     --services data,index,query,analytics,eventing
     """
 
-    time.sleep(5)
+    os.system('sleep 5')
 
     exec_cmd_cbn2 = f'docker exec cbn2 /bin/bash -c "{server_init1}"'
     exec_cmd_cbn3 = f'docker exec cbn3 /bin/bash -c "{server_init2}"'
 
     os.system(exec_cmd_cbn2)
-    time.sleep(10)
+    os.system('sleep 15')
     os.system(exec_cmd_cbn3)
 
 
@@ -286,7 +286,7 @@ def perform_rebalance() -> None:
     cb_cli_rebalance = f"/opt/couchbase/bin/couchbase-cli rebalance -c localhost -u {username} -p {password} --no-progress-bar --no-wait"
     rebalance_cbcli = f"docker exec cbn1 /bin/bash -c '{cb_cli_rebalance}'"
     os.system(rebalance_cbcli)
-    time.sleep(15)
+    os.system('sleep 15')
     print("\n")
 
 def pause_containers() -> None:
@@ -381,8 +381,7 @@ def create_cb_user_for_sgw() -> None:
 def configure_sgw() -> None:
     # docker run -p 4984-4986:4984-4986 --name sgw -d -v ./path/to/config.json:/etc/sync_gateway/config.json couchbase/sync-gateway
     # use inject cbn1 ip into the config.json file in place of bootstrap part of "server": "couchbase://172.17.0.2"
-
-    print("****************************** Configuring the sync gateway ******************************\n\n")
+    
     # using the cbn1 ip to configure the sync gateway
     """ Bootstrap code: {"bootstrap": {"server": "couchbase://172.17.0.2", "username": "sync_gateway", "password": "admin123", "server_tls_skip_verify": true, "use_tls_server": false}, "logging": {"console": {"enabled": true, "log_level": "info", "log_keys": ["*"]}}}"""
     config_data = {

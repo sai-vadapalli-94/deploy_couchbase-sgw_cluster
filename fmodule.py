@@ -122,17 +122,17 @@ def run_containers(version: str) -> None:
     print("****************************** Running the couchbase containers ******************************")
     init_container = f"cbn1"
     # docker run -d --name cbn3 -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase
-    run_cmd_init = f"docker run -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
+    run_cmd_init = f"docker run --hostname='cbn1' -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
     container_cbn1 = subprocess.run(run_cmd_init, shell=True, capture_output=True, text=True)
     print(f"\nContainer cbn1: {container_cbn1.stdout.strip()[0:7]}")
 
     second_container = f"cbn2"
-    run_cmd_second = f"docker run -d --name {second_container} couchbase:{version}"
+    run_cmd_second = f"docker run --hostname='cbn2' -d --name {second_container} couchbase:{version}"
     container_cbn2 = subprocess.run(run_cmd_second, shell=True, capture_output=True, text=True)
     print(f"Container cbn2: {container_cbn2.stdout.strip()[0:7]}")
 
     third_container = f"cbn3"
-    run_cmd_third = f"docker run -d --name {third_container}  couchbase:{version}"
+    run_cmd_third = f"docker run -d --hostname='cbn3' --name {third_container}  couchbase:{version}"
     container_cbn3 = subprocess.run(run_cmd_third, shell=True, capture_output=True, text=True)
     print(f"Container cbn3: {container_cbn3.stdout.strip()[0:7]}")
     os.system('sleep 10')
@@ -356,7 +356,7 @@ def sgw_pull_image() -> None:
     This function does not take any parameters and does not return anything.
     """
 
-    print("****************************** Pulling the sync gateway image ******************************\n")
+    print("****************************** Pulling the latest sync gateway image ******************************\n")
     image_pull = f"docker pull couchbase/syncgateway"
     os.system(image_pull)
 
@@ -375,13 +375,13 @@ def create_cb_user_for_sgw() -> None:
     user_cmd = f"/opt/couchbase/bin/couchbase-cli user-manage -c localhost -u {username} -p {password} --set --rbac-username sync_gateway --rbac-password {password} --rbac-name sync_gateway --roles mobile_sync_gateway[*] --auth-domain local"
     docker_cmd = f"docker exec cbn1 /bin/bash -c '{user_cmd}'"
     output = subprocess.run(docker_cmd, shell=True, capture_output=True, text=True)
-    print(f"Output of the couchbase-cli command: {output.stdout.strip()}")
+    print(f"Output of the couchbase-cli command: \n\n{output.stdout.strip()}")
     print("\n")
 
 def configure_sgw() -> None:
     # docker run -p 4984-4986:4984-4986 --name sgw -d -v ./path/to/config.json:/etc/sync_gateway/config.json couchbase/sync-gateway
     # use inject cbn1 ip into the config.json file in place of bootstrap part of "server": "couchbase://172.17.0.2"
-    
+
     # using the cbn1 ip to configure the sync gateway
     """ Bootstrap code: {"bootstrap": {"server": "couchbase://172.17.0.2", "username": "sync_gateway", "password": "admin123", "server_tls_skip_verify": true, "use_tls_server": false}, "logging": {"console": {"enabled": true, "log_level": "info", "log_keys": ["*"]}}}"""
     config_data = {

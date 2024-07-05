@@ -122,7 +122,7 @@ def run_containers(version: str) -> None:
     print("****************************** Running the couchbase containers ******************************")
     init_container = f"cbn1"
     # docker run -d --name cbn3 -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase
-    run_cmd_init = f"docker run --hostname='cbn1' -d --name {init_container} -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
+    run_cmd_init = f"docker run --hostname='cbn1' -d --name {init_container} -p 18091:18091 -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 couchbase:{version}"
     container_cbn1 = subprocess.run(run_cmd_init, shell=True, capture_output=True, text=True)
     print(f"\nContainer cbn1: {container_cbn1.stdout.strip()[0:7]}")
 
@@ -200,7 +200,7 @@ def configure_init_node() -> None:
     eventing_ramsize = "512"
     fts_ramsize = "512"
     analytics_ramsize = "1024"
-
+    os.system('sleep 10')
     cluster_init = f"""/opt/couchbase/bin/couchbase-cli cluster-init -c {container_ip_addr} --cluster-name cb-test --cluster-username {username} \
     --cluster-password {password} --services data,index,query,fts,analytics \
     --cluster-ramsize {data_ramsize} --cluster-index-ramsize {index_ramsize} \

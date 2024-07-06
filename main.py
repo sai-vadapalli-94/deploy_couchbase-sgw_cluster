@@ -1,6 +1,5 @@
 # documentation link: https://docs.couchbase.com/server/current/install/getting-started-docker.html
 from fmodule import *
-from create_bucket import *
 
 def main():
     """
